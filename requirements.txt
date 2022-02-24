@@ -2,3 +2,5 @@
 torch
 pytorch-metric-learning
 faiss-cpu
+pyyaml
+argparse

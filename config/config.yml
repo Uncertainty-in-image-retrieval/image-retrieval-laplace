@@ -1,0 +1,5 @@
+training:
+  batch_size: 4
+  epochs: 1
+  lr: 0.01
+  margin: 0.2

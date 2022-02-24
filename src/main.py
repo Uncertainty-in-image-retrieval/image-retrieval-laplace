@@ -1,36 +1,17 @@
+
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 
-### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
-from torchvision import datasets, transforms
+from torchvision import transforms
 
 from pytorch_metric_learning import distances, losses, miners, reducers, testers
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 
+from src.data.make_dataset import get_data
+from src.models.model import Net
 
-### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout2d(0.25)
-        self.dropout2 = nn.Dropout2d(0.5)
-        self.fc1 = nn.Linear(9216, 128)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        x = F.max_pool2d(x, 2)
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        return x
-
+import argparse
+import yaml
 
 ### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
 def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
@@ -70,28 +51,35 @@ def test(train_set, test_set, model, accuracy_calculator):
     )
     print("Test set accuracy (Precision@1) = {}".format(accuracies["precision_at_1"]))
 
-if __name__ == "__main__":
 
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
+def set_global_args(args):
+    config_file = args.config
+    with open(config_file) as infile:
+        config_dict = yaml.load(infile, Loader=yaml.SafeLoader)
+    global TRAINING_HP
+    TRAINING_HP = config_dict['training']
 
-    batch_size = 4
 
-    dataset1 = datasets.KMNIST("./data/", train=True, download=True, transform=transform)
-    dataset2 = datasets.KMNIST("./data/", train=False, transform=transform)
-    train_loader = torch.utils.data.DataLoader(dataset1, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset2, batch_size=batch_size)
+def run():
+    training_data, test_data = get_data(data_dir="./data/", 
+                                    transform=transforms.Compose([transforms.ToTensor(),
+                                            transforms.Normalize((0.1307,), (0.3081,))]))
 
-    model = Net()#.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    num_epochs = 1
+    train_loader = torch.utils.data.DataLoader(training_data, batch_size=TRAINING_HP['batch_size'], shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=TRAINING_HP['batch_size'])
 
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    model = Net().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
 
     ### pytorch-metric-learning stuff ###
     distance = distances.CosineSimilarity()
     reducer = reducers.ThresholdReducer(low=0)
-    loss_func = losses.TripletMarginLoss(margin=0.2, distance=distance, reducer=reducer)
+    loss_func = losses.TripletMarginLoss(margin=TRAINING_HP['margin'], distance=distance, reducer=reducer)
     mining_func = miners.TripletMarginMiner(
         margin=0.2, distance=distance, type_of_triplets="semihard"
     )
@@ -99,6 +87,20 @@ if __name__ == "__main__":
     ### pytorch-metric-learning stuff ###
 
 
-    for epoch in range(1, num_epochs + 1):
+    for epoch in range(1, TRAINING_HP['epochs'] + 1):
         train(model, loss_func, mining_func, train_loader, optimizer, epoch)
-        test(dataset1, dataset2, model, accuracy_calculator)
+        test(training_data, test_data, model, accuracy_calculator)
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='Model Uncertainty in Image Retrieval using Laplace approximation')
+    
+    parser.add_argument("--config", help="Provide path to configuration file")
+    
+    args = parser.parse_args()
+
+    set_global_args(args)
+
+    run()
+    
