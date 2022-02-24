@@ -33,10 +33,10 @@ class Net(nn.Module):
 
 
 ### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
-def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
+def train(model, loss_func, mining_func,device, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, labels) in enumerate(train_loader):
-        data, labels = data, labels
+        data, labels = data.to(device), labels.to(device)
         optimizer.zero_grad()
         embeddings = model(data)
         indices_tuple = mining_func(embeddings, labels)
@@ -70,19 +70,21 @@ def test(train_set, test_set, model, accuracy_calculator):
     print("Test set accuracy (Precision@1) = {}".format(accuracies["precision_at_1"]))
 
 if __name__ == "__main__":
-
+    device = torch.device("cpu")
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
 
     batch_size = 256
 
-    dataset1 = datasets.MNIST(".", train=True, download=True, transform=transform)
-    dataset2 = datasets.MNIST(".", train=False, transform=transform)
+    dataset1 = datasets.KMNIST(".", train=True, download=True, transform=transform)
+    dataset2 = datasets.KMNIST(".", train=False, transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1, batch_size=256, shuffle=True)
     test_loader = torch.utils.data.DataLoader(dataset2, batch_size=256)
 
-    model = Net()#.to(device)
+
+
+    model = Net().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     num_epochs = 1
 
@@ -99,5 +101,5 @@ if __name__ == "__main__":
 
 
     for epoch in range(1, num_epochs + 1):
-        train(model, loss_func, mining_func, train_loader, optimizer, epoch)
+        train(model, loss_func, mining_func,device, train_loader, optimizer, epoch)
         test(dataset1, dataset2, model, accuracy_calculator)
