@@ -30,8 +30,8 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
         optimizer.step()
         wandb.log({"loss": loss, "mined triples": mining_func.num_triplets})
         if batch_idx % 20 == 0:
-            print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, \
-                Number of mined triplets = {mining_func.num_triplets}")
+            print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}," +
+                f"Number of mined triplets = {mining_func.num_triplets}")
         
 
 ### convenient function from pytorch-metric-learning ###
