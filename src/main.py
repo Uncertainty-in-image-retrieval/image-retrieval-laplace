@@ -15,7 +15,6 @@ from src.models.model import Net
 import argparse
 import yaml
 import wandb
-from sklearn.manifold import TSNE
 
 
 ### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
@@ -30,7 +29,11 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
         optimizer.step()
         wandb.log({"loss": loss, "mined triples": mining_func.num_triplets})
         if batch_idx % 20 == 0:
-            print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
+             if TRAINING_HP['miner'] == 'TripletMarginMiner':
+                print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
+            elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
+                print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
+            
         
 
 ### convenient function from pytorch-metric-learning ###
