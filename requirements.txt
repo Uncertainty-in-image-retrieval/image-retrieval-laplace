@@ -5,3 +5,6 @@ pytorch-metric-learning
 pyyaml
 argparse
 wandb
+umap-learn
+matplotlib
+seaborn

@@ -1,20 +1,21 @@
 
 import torch
-#torch.set_num_threads(1)
 import torch.optim as optim
 
 from torchvision import transforms
 
-from pytorch_metric_learning import distances, losses, miners, reducers, testers
+from pytorch_metric_learning import testers
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
-from pytorch_metric_learning.miners import BatchEasyHardMiner
 
 from src.data.make_dataset import get_data
 from src.models.model import Net
+from src.utils.pytorch_metric_learning import setup_pytorch_metric_learning
+from src.utils.plots import plot_umap
 
 import argparse
 import yaml
 import wandb
+from sklearn.neighbors import KNeighborsClassifier
 
 
 ### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
@@ -27,33 +28,48 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
         loss = loss_func(embeddings, labels, indices_tuple)
         loss.backward()
         optimizer.step()
+        wandb.log({"loss": loss})
         if batch_idx % 20 == 0:
             if TRAINING_HP['miner'] == 'TripletMarginMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
-                wandb.log({"loss": loss, "mined triples": mining_func.num_triplets})
+                wandb.log({"mined triples": mining_func.num_triplets})
             elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
-                wandb.log({"loss": loss})
+
+    return model
             
         
-
 ### convenient function from pytorch-metric-learning ###
 def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
 
+def knn(train_embeddings, train_labels, test_embeddings, test_labels):
+    knn = KNeighborsClassifier(n_neighbors=1)
+    knn.fit(train_embeddings, train_labels)
+    testing_acc = knn.score(test_embeddings, test_labels)
+
+    return testing_acc
+
 
 ### compute accuracy using AccuracyCalculator from pytorch-metric-learning ###
-def test(train_set, test_set, model, accuracy_calculator):
-    train_embeddings, train_labels = get_all_embeddings(train_set, model)
+def test(train_embeddings, train_labels, train_set, test_set, model):
+    #train_embeddings, train_labels = get_all_embeddings(train_set, model)
     test_embeddings, test_labels = get_all_embeddings(test_set, model)
+    plot_umap("test", test_embeddings, test_labels)
+
     train_labels = train_labels.squeeze(1)
     test_labels = test_labels.squeeze(1)
+
     print("Computing accuracy")
-    accuracies = accuracy_calculator.get_accuracy(
-        test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"])
+    test_acc = knn(train_embeddings, train_labels, test_embeddings, test_labels)
+    #accuracies = accuracy_calculator.get_accuracy(
+    #    test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"])
     
-    print(f"Test set accuracy (Precision@1) = {accuracies}")
+    print(f"Test set accuracy with KNN: {test_acc}")
+    wandb.log({"test acc knn": test_acc})
+
+    #print(f"Test set accuracy (Precision@1) = {accuracies}")
 
 
 def set_global_args(args):
@@ -80,37 +96,6 @@ def preproc_data():
 
     return train_loader, test_loader, training_data, test_data
 
-def setup_pytorch_metric_learning():
-    if TRAINING_HP['distance'] == 'Cosine':
-        distance = distances.CosineSimilarity()
-    elif TRAINING_HP['distance'] == 'LpDistance':
-        distance = distances.LpDistance(power=2)
-
-    if TRAINING_HP['reducer'] == 'AvgNonZero':
-        reducer = reducers.AvgNonZeroReducer()
-    elif TRAINING_HP['reducer'] == 'ThresholdReducer':
-        reducer = reducers.ThresholdReducer(low=0)
-
-    if TRAINING_HP['loss'] == 'ContrastiveLoss':
-        if TRAINING_HP['distance'] == 'Cosine':
-            loss_func = losses.ContrastiveLoss(1, 0)
-        elif TRAINING_HP['distance'] == 'LpDistance':
-            loss_func = losses.ContrastiveLoss(0, 1)
-    elif TRAINING_HP['loss'] == 'Triplet':
-        loss_func = losses.TripletMarginLoss(
-            margin=TRAINING_HP['margin'], distance=distance, reducer=reducer)
-
-    if TRAINING_HP['miner'] == 'TripletMarginMiner':
-        mining_func = miners.TripletMarginMiner(
-            margin=TRAINING_HP['margin'], distance=distance, type_of_triplets="semihard")
-    elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
-        mining_func = miners.BatchEasyHardMiner(
-            pos_strategy=BatchEasyHardMiner.EASY,
-            neg_strategy=BatchEasyHardMiner.SEMIHARD,
-            allowed_pos_range=None,
-            allowed_neg_range=None)
-
-    return loss_func, mining_func
 
 def run():
 
@@ -127,15 +112,14 @@ def run():
     model = Net().to(device)
     optimizer = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
 
-    loss_func, mining_func = setup_pytorch_metric_learning()
-
-    accuracy_calculator = AccuracyCalculator()
-
+    loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
-        train(model, loss_func, mining_func, train_loader, optimizer, epoch)
+        model = train(model, loss_func, mining_func, train_loader, optimizer, epoch)
+        train_embeddings, train_labels = get_all_embeddings(training_data, model)
+        plot_umap(f"train_{epoch}", train_embeddings, train_labels)
         
-    test(training_data, test_data, model, accuracy_calculator)
+    test(train_embeddings, train_labels, training_data, test_data, model)
 
 
 if __name__ == "__main__":
