@@ -7,7 +7,7 @@ from torchvision import transforms
 
 from pytorch_metric_learning import distances, losses, miners, reducers, testers
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
-
+from pytorch_metric_learning.miners import BatchEasyHardMiner
 
 from src.data.make_dataset import get_data
 from src.models.model import Net
@@ -84,7 +84,7 @@ def setup_pytorch_metric_learning():
 
     if TRAINING_HP['reducer'] == 'AvgNonZero':
         reducer = reducers.AvgNonZeroReducer()
-    elif TRAINING_HP['reducer'] == 'ThresholdReducer'
+    elif TRAINING_HP['reducer'] == 'ThresholdReducer':
         reducer = reducers.ThresholdReducer(low=0)
 
     if TRAINING_HP['loss'] == 'ContrastiveLoss':
