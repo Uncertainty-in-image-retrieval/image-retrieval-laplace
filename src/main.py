@@ -38,29 +38,18 @@ def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
 
-def plot_tsne(embeddings, labels):
-    emb_to_numpy = embeddings.detach().numpy()
-    labels_numpy = labels.detach().numpy()
-    emb_tsne = TSNE(n_components=2, learning_rate='auto',
-                init='random').fit_transform(emb_to_numpy)
-    
-    print(emb_tsne, labels_numpy)
-
 
 ### compute accuracy using AccuracyCalculator from pytorch-metric-learning ###
 def test(train_set, test_set, model, accuracy_calculator):
     train_embeddings, train_labels = get_all_embeddings(train_set, model)
-    #plot_tsne(train_embeddings, train_labels)
     test_embeddings, test_labels = get_all_embeddings(test_set, model)
     train_labels = train_labels.squeeze(1)
     test_labels = test_labels.squeeze(1)
-    print(train_embeddings)
-    print(train_embeddings.size())
     print("Computing accuracy")
-    #accuracies = accuracy_calculator.get_accuracy(
-    #    test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"]
-    #)
-    #print(f"Test set accuracy (Precision@1) = {accuracies}")
+    accuracies = accuracy_calculator.get_accuracy(
+        test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"]
+    
+    print(f"Test set accuracy (Precision@1) = {accuracies}")
 
 
 def set_global_args(args):
@@ -93,7 +82,10 @@ def setup_pytorch_metric_learning():
     elif TRAINING_HP['distance'] == 'LpDistance':
         distance = distances.LpDistance(power=2)
 
-    reducer = reducers.ThresholdReducer(low=0)
+    if TRAINING_HP['reducer'] == 'AvgNonZero':
+        reducer = reducers.AvgNonZeroReducer()
+    elif TRAINING_HP['reducer'] == 'ThresholdReducer'
+        reducer = reducers.ThresholdReducer(low=0)
 
     if TRAINING_HP['loss'] == 'ContrastiveLoss':
         if TRAINING_HP['distance'] == 'Cosine':
@@ -104,8 +96,15 @@ def setup_pytorch_metric_learning():
         loss_func = losses.TripletMarginLoss(
             margin=TRAINING_HP['margin'], distance=distance, reducer=reducer)
 
-    mining_func = miners.TripletMarginMiner(
-        margin=TRAINING_HP['margin'], distance=distance, type_of_triplets="semihard")
+    if TRAINING_HP['miner'] == 'TripletMarginMiner':
+        mining_func = miners.TripletMarginMiner(
+            margin=TRAINING_HP['margin'], distance=distance, type_of_triplets="semihard")
+    elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
+        mining_func = miners.BatchEasyHardMiner(
+            pos_strategy=BatchEasyHardMiner.EASY,
+            neg_strategy=BatchEasyHardMiner.SEMIHARD,
+            allowed_pos_range=None,
+            allowed_neg_range=None)
 
     return loss_func, mining_func
 
