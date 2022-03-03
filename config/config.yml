@@ -1,5 +1,13 @@
+project:
+  name: unc-img-laplace
+  experiment: exp-1
+
 training:
-  batch_size: 4
+  batch_size: 64
   epochs: 1
   lr: 0.01
-  margin: 0.2
+  margin: 0.8
+  distance: Cosine
+  loss: Triplet
+
+wandb: 358da8cfb93c05b5d6d342a84fc027188f27e79a
