@@ -3,7 +3,7 @@ project:
   experiment: exp-1
 
 training:
-  batch_size: 64
+  batch_size: 128
   epochs: 1
   lr: 0.01
   margin: 0.8
