@@ -15,7 +15,7 @@ from src.utils.plots import plot_umap
 import argparse
 import yaml
 import wandb
-
+from sklearn.neighbors import KNeighborsClassifier
 
 
 ### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
@@ -44,20 +44,31 @@ def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
 
+def knn(train_embeddings, train_labels, test_embeddings, test_labels):
+    knn = KNeighborsClassifier(n_neighbors=1)
+    knn.fit(train_embeddings, train_labels)
+    testing_acc = knn.score(test_embeddings, test_labels)
+
+    return testing_acc
+
 
 ### compute accuracy using AccuracyCalculator from pytorch-metric-learning ###
-def test(train_set, test_set, model):
-    train_embeddings, train_labels = get_all_embeddings(train_set, model)
+def test(train_embeddings, train_labels, train_set, test_set, model):
+    #train_embeddings, train_labels = get_all_embeddings(train_set, model)
     test_embeddings, test_labels = get_all_embeddings(test_set, model)
     plot_umap("test", test_embeddings, test_labels)
 
     train_labels = train_labels.squeeze(1)
     test_labels = test_labels.squeeze(1)
-    
-    #print("Computing accuracy")
+
+    print("Computing accuracy")
+    test_acc = knn(train_embeddings, train_labels, test_embeddings, test_labels)
     #accuracies = accuracy_calculator.get_accuracy(
     #    test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"])
     
+    print(f"Test set accuracy with KNN: {test_acc}")
+    wandb.log({"test acc knn": test_acc})
+
     #print(f"Test set accuracy (Precision@1) = {accuracies}")
 
 
@@ -108,7 +119,7 @@ def run():
         train_embeddings, train_labels = get_all_embeddings(training_data, model)
         plot_umap(f"train_{epoch}", train_embeddings, train_labels)
         
-    test(training_data, test_data, model)
+    test(train_embeddings, train_labels, training_data, test_data, model)
 
 
 if __name__ == "__main__":
