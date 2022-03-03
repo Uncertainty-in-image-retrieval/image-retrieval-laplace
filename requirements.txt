@@ -1,4 +1,7 @@
 -e .
 torch
+torchvision
 pytorch-metric-learning
-faiss-cpu
+pyyaml
+argparse
+wandb
