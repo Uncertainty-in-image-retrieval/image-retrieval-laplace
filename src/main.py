@@ -47,7 +47,7 @@ def test(train_set, test_set, model, accuracy_calculator):
     test_labels = test_labels.squeeze(1)
     print("Computing accuracy")
     accuracies = accuracy_calculator.get_accuracy(
-        test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"]
+        test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"])
     
     print(f"Test set accuracy (Precision@1) = {accuracies}")
 
