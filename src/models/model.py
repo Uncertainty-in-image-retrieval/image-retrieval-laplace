@@ -20,4 +20,4 @@ class Net(nn.Module):
         x = self.dropout1(x)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
-        return x
+        return x 

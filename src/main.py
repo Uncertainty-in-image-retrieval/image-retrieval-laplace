@@ -51,7 +51,7 @@ def plot_tsne(embeddings, labels):
 ### compute accuracy using AccuracyCalculator from pytorch-metric-learning ###
 def test(train_set, test_set, model, accuracy_calculator):
     train_embeddings, train_labels = get_all_embeddings(train_set, model)
-    plot_tsne(train_embeddings, train_labels)
+    #plot_tsne(train_embeddings, train_labels)
     test_embeddings, test_labels = get_all_embeddings(test_set, model)
     train_labels = train_labels.squeeze(1)
     test_labels = test_labels.squeeze(1)
@@ -114,8 +114,6 @@ def run():
 
     wandb.login(key=WANDB_KEY)
     wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
-    
-    #wandb.config = TRAINING_HP
 
     train_loader, test_loader, training_data, test_data = preproc_data()
 
