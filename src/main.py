@@ -1,7 +1,5 @@
-
 import torch
 import torch.optim as optim
-
 from torchvision import transforms
 
 from pytorch_metric_learning import testers
@@ -18,7 +16,6 @@ import wandb
 from sklearn.neighbors import KNeighborsClassifier
 
 
-### MNIST code originally from https://github.com/pytorch/examples/blob/master/mnist/main.py ###
 def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, labels) in enumerate(train_loader):
@@ -39,10 +36,10 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
     return model
             
         
-### convenient function from pytorch-metric-learning ###
 def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
+
 
 def knn(train_embeddings, train_labels, test_embeddings, test_labels):
     knn = KNeighborsClassifier(n_neighbors=1)
@@ -52,7 +49,6 @@ def knn(train_embeddings, train_labels, test_embeddings, test_labels):
     return testing_acc
 
 
-### compute accuracy using AccuracyCalculator from pytorch-metric-learning ###
 def test(train_embeddings, train_labels, train_set, test_set, model):
     #train_embeddings, train_labels = get_all_embeddings(train_set, model)
     test_embeddings, test_labels = get_all_embeddings(test_set, model)
@@ -63,13 +59,9 @@ def test(train_embeddings, train_labels, train_set, test_set, model):
 
     print("Computing accuracy")
     test_acc = knn(train_embeddings, train_labels, test_embeddings, test_labels)
-    #accuracies = accuracy_calculator.get_accuracy(
-    #    test_embeddings, train_embeddings, test_labels, train_labels, False, include=["precision_at_1"])
     
     print(f"Test set accuracy with KNN: {test_acc}")
     wandb.log({"test acc knn": test_acc})
-
-    #print(f"Test set accuracy (Precision@1) = {accuracies}")
 
 
 def set_global_args(args):
@@ -81,6 +73,7 @@ def set_global_args(args):
     TRAINING_HP = config_dict['training']
     WANDB_KEY = config_dict['wandb']
     PROJECT = config_dict['project']
+
 
 def preproc_data():
     transform = transforms.Compose(
@@ -95,6 +88,12 @@ def preproc_data():
         test_data, batch_size=TRAINING_HP['batch_size'])
 
     return train_loader, test_loader, training_data, test_data
+
+
+def reshuffle_train(training_data):
+    train_loader = torch.utils.data.DataLoader(
+        training_data, batch_size=TRAINING_HP['batch_size'], shuffle=True)
+    return train_loader
 
 
 def run():
@@ -116,6 +115,7 @@ def run():
 
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
         model = train(model, loss_func, mining_func, train_loader, optimizer, epoch)
+        train_loader = reshuffle_train(training_data)
         train_embeddings, train_labels = get_all_embeddings(training_data, model)
         plot_umap(f"train_{epoch}", train_embeddings, train_labels)
         
