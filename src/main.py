@@ -1,4 +1,5 @@
 import torch
+import torch.distributions as dists
 import torch.optim as optim
 from torchvision import transforms
 
@@ -15,26 +16,32 @@ import yaml
 import wandb
 from sklearn.neighbors import KNeighborsClassifier
 
+from laplace import Laplace
+from netcal.metrics import ECE
 
-def train(model, loss_func, mining_func, train_loader, optimizer, epoch):
-    model.train()
+
+def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device, laplace=False):
+    
     for batch_idx, (data, labels) in enumerate(train_loader):
-        optimizer.zero_grad()
-        embeddings = model(data)
-        indices_tuple = mining_func(embeddings, labels)
-        loss = loss_func(embeddings, labels, indices_tuple)
-        loss.backward()
-        optimizer.step()
-        wandb.log({"loss": loss})
-        if batch_idx % 20 == 0:
-            if TRAINING_HP['miner'] == 'TripletMarginMiner':
-                print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
-                wandb.log({"mined triples": mining_func.num_triplets})
-            elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
-                print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
-
-    return model
-            
+        data, labels = data.to(device), labels.to(device)
+        if laplace:
+            pass # TODO: model.fit(train_loader[batch_idx])
+        else:
+            model.train()
+            optimizer.zero_grad()
+            embeddings = model(data)
+            indices_tuple = mining_func(embeddings, labels)
+            loss = loss_func(embeddings, labels, indices_tuple)
+            loss.backward()
+            optimizer.step()
+            wandb.log({"loss": loss})
+            if batch_idx % 20 == 0:
+                if TRAINING_HP['miner'] == 'TripletMarginMiner':
+                    print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
+                    wandb.log({"mined triples": mining_func.num_triplets})
+                elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
+                    print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
+        
         
 def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
@@ -49,19 +56,28 @@ def knn(train_embeddings, train_labels, test_embeddings, test_labels):
     return testing_acc
 
 
-def test(train_embeddings, train_labels, train_set, test_set, model):
-    #train_embeddings, train_labels = get_all_embeddings(train_set, model)
-    test_embeddings, test_labels = get_all_embeddings(test_set, model)
-    plot_umap("test", test_embeddings, test_labels)
-
-    train_labels = train_labels.squeeze(1)
-    test_labels = test_labels.squeeze(1)
-
-    print("Computing accuracy")
-    test_acc = knn(train_embeddings, train_labels, test_embeddings, test_labels)
+def test(model, test_loader, device, laplace=False):
+    if not laplace:
+        acc_map = []
+        model.eval()
+        targets = torch.cat([y for x, y in test_loader], dim=0).numpy()
+        for batch_idx, (data, labels) in enumerate(test_loader):
+            data, labels = data.to(device), labels.to(device)
+            embeddings = torch.softmax(model(data), dim=1)
+            probs_map = torch.cat([embeddings], dim=1).detach().numpy()
+            y_hat = probs_map.argmax(-1)
+            acc_map.extend([1 if y_hat[idx] == labels[idx] else 0 for idx in range(len(y_hat))])
+            ece_map = ECE(bins=10).measure(probs_map, labels.detach().numpy())
+            nll_map = dists.Categorical(torch.tensor(probs_map)).log_prob(labels).mean()
     
-    print(f"Test set accuracy with KNN: {test_acc}")
-    wandb.log({"test acc knn": test_acc})
+        print(f'[MAP] Acc.: {sum(acc_map)/len(acc_map)}; ECE: {ece_map}; NLL: {nll_map}')
+        wandb.log({"Accuracy": sum(acc_map)/len(acc_map), "ECE": ece_map, "NLL": nll_map})
+
+    if laplace:
+        pass# TODO: implement
+        
+    
+    
 
 
 def set_global_args(args):
@@ -101,7 +117,7 @@ def run():
     wandb.login(key=WANDB_KEY)
     wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
 
-    train_loader, test_loader, training_data, test_data = preproc_data()
+    train_loader, test_loader, train_data, test_data = preproc_data()
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -114,13 +130,44 @@ def run():
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
-        model = train(model, loss_func, mining_func, train_loader, optimizer, epoch)
-        train_loader = reshuffle_train(training_data)
-        train_embeddings, train_labels = get_all_embeddings(training_data, model)
-        plot_umap(f"train_{epoch}", train_embeddings, train_labels)
         
-    test(train_embeddings, train_labels, training_data, test_data, model)
+        ### TRAINING ###
+        print("Training without Laplace approximation...")
+        train(model, loss_func, mining_func, train_loader, optimizer, epoch, device, laplace=False)
 
+        
+        #print("Training with Laplace approximation...") # VERY SLOW
+        #la = Laplace(model, 'classification',
+        #     subset_of_weights='last_layer',
+        #     hessian_structure='kron')
+        #model_la = train(la, loss_func, mining_func, test_loader, optimizer, epoch, laplace=True)
+        #la.optimize_prior_precision(method='marglik')
+
+        ### RESHUFFLE FOR NEXT EPOCH ###
+        train_loader = reshuffle_train(train_data)
+
+    ### PLOTTING TRAINING EMBEDDINGS ###
+    train_embeddings, train_labels = get_all_embeddings(train_data, model)
+    plot_umap(f"train_{epoch}", train_embeddings, train_labels)
+
+
+    ### TESTING AND PLOTTING TEST EMBEDDINGS ###
+    print("Testing without Laplace approximation...")
+    test(model, train_loader, device, laplace=False)
+    test_embeddings, test_labels = get_all_embeddings(test_data, model)
+    plot_umap(f"test_{epoch}", test_embeddings, test_labels)
+    
+    print("Testing with Laplace approximation...")
+    # TODO: implement
+
+    ### ACCURACY WITH KNN ###
+    print("Computing accuracy...")
+    train_labels = train_labels.squeeze(1)
+    test_labels = test_labels.squeeze(1)
+    test_acc = knn(train_embeddings, train_labels, test_embeddings, test_labels)
+    
+    print(f"Test set accuracy with KNN: {test_acc}")
+    wandb.log({"Embeddigns KNN Accuracy": test_acc})
 
 if __name__ == "__main__":
 

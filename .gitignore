@@ -133,3 +133,4 @@ dmypy.json
 wandb/
 data/
 share/
+etc/
