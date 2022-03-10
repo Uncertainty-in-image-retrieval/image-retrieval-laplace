@@ -16,10 +16,12 @@ import argparse
 import yaml
 import wandb
 from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+import matplotlib.pyplot as plt
 
 from laplace import Laplace
 from netcal.metrics import ECE
-
+from netcal.presentation import ReliabilityDiagram
 
 def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device):
     
@@ -38,13 +40,15 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device)
 
         loss.backward()
         optimizer.step()
-        #wandb.log({"loss": loss})
+        wandb.log({"loss": loss})
         if batch_idx % 20 == 0:
             if TRAINING_HP['miner'] == 'TripletMarginMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
                 wandb.log({"mined triples": mining_func.num_triplets})
             elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
+
+        break
         
         
 def get_all_embeddings(dataset, model):
@@ -62,6 +66,7 @@ def knn(train_embeddings, train_labels, test_embeddings, test_labels):
 
 def test(model, test_loader, device, laplace=False):
     acc_map = []
+    overall_output, overall_labels = [], []
     #model.eval()
     targets = torch.cat([y for x, y in test_loader], dim=0).numpy()
     for batch_idx, (data, labels) in enumerate(test_loader):
@@ -70,20 +75,24 @@ def test(model, test_loader, device, laplace=False):
             embeddings = model(data)
         else:
             embeddings = torch.softmax(model(data), dim=1)
+
+        overall_output.extend(embeddings.detach().numpy())
+        overall_labels.extend(labels.detach().numpy())
         probs_map = torch.cat([embeddings], dim=1).detach().numpy()
         y_hat = probs_map.argmax(-1)
         acc_map.extend([1 if y_hat[idx] == labels[idx] else 0 for idx in range(len(y_hat))])
-        ece_map = ECE(bins=10).measure(probs_map, labels.detach().numpy())
+        n_bins = 10
+        ece_map = ECE(bins=n_bins).measure(probs_map, labels.detach().numpy())
         nll_map = dists.Categorical(torch.tensor(probs_map)).log_prob(labels).mean()
 
+    diagram = ReliabilityDiagram(n_bins)
+    diagram.plot(np.array(overall_output), np.array(overall_labels))
+    plt.savefig(f"visualizations/laplace-{laplace}.png")
+
     print(f'[MAP] Acc.: {sum(acc_map)/len(acc_map)}; ECE: {ece_map}; NLL: {nll_map}')
-    #wandb.log({"Accuracy": sum(acc_map)/len(acc_map), "ECE": ece_map, "NLL": nll_map})
+    wandb.log({"Accuracy": sum(acc_map)/len(acc_map), "ECE": ece_map, "NLL": nll_map})
 
-        
     
-    
-
-
 def set_global_args(args):
     config_file = args.config
     with open(config_file) as infile:
@@ -118,8 +127,8 @@ def reshuffle_train(training_data):
 
 def run():
 
-    #wandb.login(key=WANDB_KEY)
-    #wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
+    wandb.login(key=WANDB_KEY)
+    wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
 
     train_loader, test_loader, train_data, test_data = preproc_data()
 
@@ -133,8 +142,6 @@ def run():
     model_softmax = NetSoftmax().to(device)
     optimizer_model_softmax = optim.Adam(model_softmax.parameters(), lr=TRAINING_HP['lr'])
     
-    
-
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
     cross_entropy_loss = nn.CrossEntropyLoss()
