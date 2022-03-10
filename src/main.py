@@ -47,8 +47,6 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device)
                 wandb.log({"mined triples": mining_func.num_triplets})
             elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
-
-        break
         
         
 def get_all_embeddings(dataset, model):
@@ -87,7 +85,7 @@ def test(model, test_loader, device, laplace=False):
 
     diagram = ReliabilityDiagram(n_bins)
     diagram.plot(np.array(overall_output), np.array(overall_labels))
-    plt.savefig(f"visualizations/laplace-{laplace}.png")
+    plt.savefig(f"visualizations/laplace-{PROJECT['experiment']}-{laplace}.png")
 
     print(f'[MAP] Acc.: {sum(acc_map)/len(acc_map)}; ECE: {ece_map}; NLL: {nll_map}')
     wandb.log({"Accuracy": sum(acc_map)/len(acc_map), "ECE": ece_map, "NLL": nll_map})
