@@ -162,7 +162,7 @@ def run():
     print("Fitting Laplace approximation...") # VERY SLOW
     la = Laplace(model_softmax, 'classification',
          subset_of_weights='last_layer',
-         hessian_structure='diag')
+         hessian_structure='kron')
     la.fit(train_loader)
     la.optimize_prior_precision(method='marglik')
 

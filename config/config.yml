@@ -1,6 +1,6 @@
 project:
   name: unc-img-laplace
-  experiment: last-diag
+  experiment: kron
 
 training:
   batch_size: 256
