@@ -189,13 +189,13 @@ print(f'[MAP] Acc.: {acc_map:.1%}; ECE: {ece_map:.1%}; NLL: {nll_map:.3}')
 # Laplace
 la = Laplace(model, 'classification',
              subset_of_weights='last_layer',
-             hessian_structure='kron')
+             hessian_structure='diag')
 la.fit(train_loader)
 la.optimize_prior_precision(method='marglik')
 
 probs_laplace = predict(test_loader, la, laplace=True)
-acc_laplace = (probs_laplace.argmax(-1) == targets).float().mean()
-ece_laplace = ECE(bins=15).measure(probs_laplace.numpy(), targets.numpy())
+acc_laplace = (probs_laplace.argmax(-1) == targets).mean()
+ece_laplace = ECE(bins=15).measure(probs_laplace, targets)
 nll_laplace = -dists.Categorical(torch.tensor(probs_laplace)).log_prob(torch.tensor(targets)).mean()
 
 print(f'[Laplace] Acc.: {acc_laplace:.1%}; ECE: {ece_laplace:.1%}; NLL: {nll_laplace:.3}')
