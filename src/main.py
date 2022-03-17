@@ -526,14 +526,34 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device)
 
         loss.backward()
         optimizer.step()
-        wandb.log({"loss": loss})
+        wandb.log({"training loss": loss})
         if batch_idx % 20 == 0:
             if TRAINING_HP['miner'] == 'TripletMarginMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
                 wandb.log({"mined triples": mining_func.num_triplets})
             elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}")
+
+def eval(model, loss_func, mining_func, validation_loader, epoch, device):
+    for batch_idx, (data, labels) in enumerate(validation_loader):
+        data, labels = data.to(device), labels.to(device)
         
+        model.eval()
+        embeddings = model(data)
+
+        if mining_func:
+            indices_tuple = mining_func(embeddings, labels)
+            loss = loss_func(embeddings, labels, indices_tuple)
+        else:
+            loss = loss_func(embeddings, labels)
+
+        wandb.log({"validation loss": loss})
+        if batch_idx % 20 == 0:
+            if TRAINING_HP['miner'] == 'TripletMarginMiner':
+                print(f"Epoch {epoch} Iteration {batch_idx}/{len(validation_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
+                wandb.log({"mined triples": mining_func.num_triplets})
+            elif TRAINING_HP['miner'] == 'BatchEasyHardMiner':
+                print(f"Epoch {epoch} Iteration {batch_idx}/{len(validation_loader)}: Loss = {loss}")     
         
 def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
@@ -594,15 +614,17 @@ def preproc_data():
     transform = transforms.Compose(
         [transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
 
-    training_data, test_data = get_data(data_dir="./data/", 
+    training_data, test_data, validation_data = get_data(data_dir="./data/", 
                                     transform=transform)
 
     train_loader = torch.utils.data.DataLoader(
         training_data, batch_size=TRAINING_HP['batch_size'], shuffle=True)
     test_loader = torch.utils.data.DataLoader(
         test_data, batch_size=TRAINING_HP['batch_size'])
+    validation_loader = torch.utils.data.DataLoader(
+        test_data, batch_size=TRAINING_HP['batch_size'])
 
-    return train_loader, test_loader, training_data, test_data
+    return train_loader, test_loader, validation_loader, training_data, test_data, validation_data
 
 
 def reshuffle_train(training_data):
@@ -616,7 +638,7 @@ def run():
     wandb.login(key=WANDB_KEY)
     wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
 
-    train_loader, test_loader, train_data, test_data = preproc_data()
+    train_loader, test_loader, validation_loader, train_data, test_data, validation_data = preproc_data()
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -639,12 +661,14 @@ def run():
 
         print("Training Traditional without Laplace approximation...")
         train(model_softmax, cross_entropy_loss, None, train_loader, optimizer_model_softmax, epoch, device)
+        eval(model, cross_entropy_loss, None, validation_loader, epoch, device)
 
         #print("Training Traditional with Laplace approximation...")
         #train(model_softmax, cross_entropy_loss, None, train_loader, optimizer_model_softmax, epoch, device, laplace=True)
 
         ### RESHUFFLE FOR NEXT EPOCH ###
         train_loader = reshuffle_train(train_data)
+
 
 
     print("Fitting Laplace approximation...") # VERY SLOW
