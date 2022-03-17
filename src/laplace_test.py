@@ -21,6 +21,8 @@ import torch
 from torchvision import datasets, transforms
 import torch.utils.data as data_utils
 
+from src.models.model import VGG
+
 
 train_batch_size = 128
 test_batch_size = 100
@@ -34,8 +36,9 @@ def CIFAR10(data_dir):
     transform = transforms.Compose(
         [transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
 
-    training_data = datasets.CIFAR10(data_dir, train=True, download=True, transform=transform)
-    test_data = datasets.CIFAR10(data_dir, train=False, transform=transform)
+    training_data = datasets.KMNIST(data_dir, train=True, download=True, transform=transform)
+
+    test_data = datasets.KMNIST(data_dir, train=False, transform=transform)
 
     train_loader = torch.utils.data.DataLoader(training_data, batch_size=128,
                                          shuffle=True, num_workers=0)
@@ -100,7 +103,7 @@ class NetworkBlock(nn.Module):
 
 class WideResNet(nn.Module):
 
-    def __init__(self, depth, widen_factor, num_classes, num_channel=3, dropRate=0.3, feature_extractor=False):
+    def __init__(self, depth, widen_factor, num_classes, num_channel=1, dropRate=0.3, feature_extractor=False):
         super(WideResNet, self).__init__()
 
         nChannels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]
@@ -162,9 +165,9 @@ targets = torch.cat([y for x, y in test_loader], dim=0).numpy()
 
 # The model is a standard WideResNet 16-4
 # Taken as is from https://github.com/hendrycks/outlier-exposure
-model = WideResNet(16, 4, num_classes=10).eval()
+model = VGG().eval()
 
-model.load_state_dict(torch.load('./temp/CIFAR10_plain.pt', map_location=torch.device('cpu')))
+model.load_state_dict(torch.load('./temp/tensor.pt', map_location=torch.device('cpu')))
 
 @torch.no_grad()
 def predict(dataloader, model, laplace=False):

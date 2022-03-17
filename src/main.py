@@ -8,7 +8,7 @@ from pytorch_metric_learning import testers
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 
 from src.data.make_dataset import get_data
-from src.models.model import Net, NetSoftmax
+from src.models.model import VGG, Net, NetSoftmax
 from src.utils.pytorch_metric_learning import setup_pytorch_metric_learning
 from src.utils.plots import plot_umap
 
@@ -137,7 +137,7 @@ def run():
 
     model = Net().to(device)
     optimizer_model = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
-    model_softmax = NetSoftmax().to(device)
+    model_softmax = VGG().to(device)
     optimizer_model_softmax = optim.Adam(model_softmax.parameters(), lr=TRAINING_HP['lr'])
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
@@ -158,6 +158,7 @@ def run():
         ### RESHUFFLE FOR NEXT EPOCH ###
         train_loader = reshuffle_train(train_data)
 
+    torch.save(model_softmax.state_dict(),'temp/tensor.pt')
 
     print("Fitting Laplace approximation...") # VERY SLOW
     la = Laplace(model_softmax, 'classification',
