@@ -8,3 +8,6 @@ wandb
 umap-learn
 matplotlib
 seaborn
+laplace-torch
+faiss-cpu
+netcal

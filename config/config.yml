@@ -1,12 +1,12 @@
 project:
   name: unc-img-laplace
-  experiment: exp-1
+  experiment: last-diag
 
 training:
   batch_size: 128
   epochs: 1
-  lr: 0.01
-  margin: 0.8
+  lr: 0.001
+  margin: 0.1
   distance: LpDistance
   loss: ContrastiveLoss
   reducer: AvgNonZero

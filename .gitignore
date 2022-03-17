@@ -133,10 +133,3 @@ dmypy.json
 wandb/
 data/
 share/
-setup.py
-
-#ignore wandb key and config
-config
-
-setup.py
-config/config.yml
