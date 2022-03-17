@@ -3,7 +3,7 @@ project:
   experiment: last-diag
 
 training:
-  batch_size: 256
+  batch_size: 128
   epochs: 5
   lr: 0.001
   margin: 0.1
