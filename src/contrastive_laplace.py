@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import sys
 
-sys.path.append("../Laplace")
+sys.path.append("Laplace")
 from laplace.laplace import Laplace
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
 #from ..utils import save_laplace, load_laplace
@@ -25,9 +25,9 @@ def create_dataset():
     )
     X = torch.tensor(X).unsqueeze(1).type(torch.float)
     y = torch.tensor(y).type(torch.float)
-    os.makedirs("../figures/toy_regression_example", exist_ok=True)
+    os.makedirs("figures/toy_regression_example", exist_ok=True)
     plt.plot(X, y, ".")
-    plt.savefig("../figures/toy_regression_example/data.png")
+    plt.savefig("figures/toy_regression_example/data.png")
     plt.cla()
     plt.close()
     print(X.shape, y.shape)
@@ -69,8 +69,8 @@ def train_model(dataset, model):
         print(epoch, loss)
 
     # save weights
-    path = "../weights/toy_regression_example/model.pth"
-    os.makedirs("../weights/toy_regression_example", exist_ok=True)
+    path = "weights/toy_regression_example/model.pth"
+    os.makedirs("weights/toy_regression_example", exist_ok=True)
     torch.save(model.state_dict(), path)
 
 
@@ -101,7 +101,7 @@ def eval_regression(dataset, model):
 
 def load_model(model):
 
-    path = "../weights/toy_regression_example/model.pth"
+    path = "weights/toy_regression_example/model.pth"
     statedict = torch.load(path)
     model.load_state_dict(statedict)
     return model
@@ -121,14 +121,14 @@ def compute_hessian_laplace_redux(model, dataloader):
     la.optimize_prior_precision()
 
     # save weights
-    path = f"../weights/toy_regression_example/"
+    path = f"weights/toy_regression_example/"
     if not os.path.isdir(path):
         os.makedirs(path)
     #save_laplace(la, f"{path}/laplace.pkl")
 
     print(la.H)
     plt.plot(la.H.numpy(), "-o")
-    plt.savefig("../figures/toy_regression_example/h_laplace_redux.png")
+    plt.savefig("figures/toy_regression_example/h_laplace_redux.png")
     plt.cla()
     plt.close()
 
@@ -203,7 +203,7 @@ def compute_hessian_ours(dataloader, net):
     print(final_H)
 
     plt.plot(final_H.numpy(), "-o")
-    plt.savefig("../figures/toy_regression_example/h_ours.png")
+    plt.savefig("figures/toy_regression_example/h_ours.png")
     plt.cla()
     plt.close()
 
@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     breakpoint()
     plt.plot(H - H_our.numpy(), "-o")
-    plt.savefig("../figures/toy_regression_example/diff_hessains.png")
+    plt.savefig("figures/toy_regression_example/diff_hessains.png")
     plt.cla()
     plt.close()
     print(H - H_our.numpy())
