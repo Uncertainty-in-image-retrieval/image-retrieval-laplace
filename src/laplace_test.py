@@ -31,7 +31,7 @@ test_batch_size = 100
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
-def CIFAR10(data_dir):
+def KMNIST(data_dir):
 
     transform = transforms.Compose(
         [transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
@@ -159,7 +159,7 @@ torch.manual_seed(7777)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
 
-train_loader, test_loader = CIFAR10(data_dir="./data/")
+train_loader, test_loader = KMNIST(data_dir="./data/")
 
 targets = torch.cat([y for x, y in test_loader], dim=0).numpy()
 
