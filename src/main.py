@@ -137,12 +137,12 @@ def run():
 
     model = Net().to(device)
     optimizer_model = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
-    model_softmax = VGG().to(device)
-    optimizer_model_softmax = optim.Adam(model_softmax.parameters(), lr=TRAINING_HP['lr'])
+    #model_softmax = VGG().to(device)
+    #optimizer_model_softmax = optim.Adam(model_softmax.parameters(), lr=TRAINING_HP['lr'])
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
-    cross_entropy_loss = nn.CrossEntropyLoss()
+    #cross_entropy_loss = nn.CrossEntropyLoss()
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
         
         ### TRAINING ###
@@ -150,7 +150,7 @@ def run():
         #train(model, loss_func, mining_func, train_loader, optimizer, epoch, device, laplace=False)
 
         print("Training Traditional without Laplace approximation...")
-        train(model_softmax, cross_entropy_loss, None, train_loader, optimizer_model_softmax, epoch, device)
+        train(model, loss_func, mining_func, train_loader, optimizer_model, epoch, device)
 
         #print("Training Traditional with Laplace approximation...")
         #train(model_softmax, cross_entropy_loss, None, train_loader, optimizer_model_softmax, epoch, device, laplace=True)
@@ -158,14 +158,14 @@ def run():
         ### RESHUFFLE FOR NEXT EPOCH ###
         train_loader = reshuffle_train(train_data)
 
-    torch.save(model_softmax.state_dict(),'temp/tensor.pt')
+    torch.save(model.state_dict(),'temp/tensor.pt')
 
-    print("Fitting Laplace approximation...") # VERY SLOW
-    la = Laplace(model_softmax, 'classification',
-         subset_of_weights='last_layer',
-         hessian_structure='diag')
-    la.fit(train_loader)
-    la.optimize_prior_precision(method='marglik')
+    #print("Fitting Laplace approximation...") # VERY SLOW
+    #la = Laplace(model_softmax, 'classification',
+    #     subset_of_weights='last_layer',
+    #     hessian_structure='diag')
+    #la.fit(train_loader)
+    #la.optimize_prior_precision(method='marglik')
 
     ### PLOTTING TRAINING EMBEDDINGS ###
     #train_embeddings, train_labels = get_all_embeddings(train_data, model)
@@ -177,11 +177,11 @@ def run():
     #test_embeddings, test_labels = get_all_embeddings(test_data, model)
     #plot_umap(f"test_{epoch}", test_embeddings, test_labels)
 
-    print("Testing Traditional without Laplace approximation...")
-    test(model_softmax, test_loader, device, False)
+    #print("Testing Traditional without Laplace approximation...")
+    #test(model_softmax, test_loader, device, False)
     
-    print("Testing with Laplace approximation...")
-    test(la, test_loader, device, True)
+    #print("Testing with Laplace approximation...")
+    #test(la, test_loader, device, True)
 
     ### ACCURACY WITH KNN ###
     #print("Computing accuracy...")
