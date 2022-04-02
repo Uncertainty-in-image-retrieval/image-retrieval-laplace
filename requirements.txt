@@ -11,3 +11,4 @@ seaborn
 laplace-torch
 faiss-cpu
 netcal
+tqdm

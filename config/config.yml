@@ -5,7 +5,7 @@ project:
 training:
   batch_size: 128
   epochs: 1
-  lr: 0.001
+  lr: 0.0005
   margin: 0.1
   distance: LpDistance
   loss: ContrastiveLoss

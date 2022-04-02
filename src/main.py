@@ -9,6 +9,7 @@ from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 
 from src.data.make_dataset import get_data
 from src.models.model import VGG, Net, NetSoftmax
+from src.models.metric_laplace import MetricLaplace
 from src.utils.pytorch_metric_learning import setup_pytorch_metric_learning
 from src.utils.plots import plot_umap
 
@@ -130,42 +131,29 @@ def run():
 
     train_loader, test_loader, train_data, test_data = preproc_data()
 
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-
+    device = (torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
+    
     model = Net().to(device)
     optimizer_model = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
-    #model_softmax = VGG().to(device)
-    #optimizer_model_softmax = optim.Adam(model_softmax.parameters(), lr=TRAINING_HP['lr'])
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
-    #cross_entropy_loss = nn.CrossEntropyLoss()
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
-        
-        ### TRAINING ###
-        #print("Training Siamese without Laplace approximation...")
-        #train(model, loss_func, mining_func, train_loader, optimizer, epoch, device, laplace=False)
 
-        print("Training Traditional without Laplace approximation...")
         train(model, loss_func, mining_func, train_loader, optimizer_model, epoch, device)
-
-        #print("Training Traditional with Laplace approximation...")
-        #train(model_softmax, cross_entropy_loss, None, train_loader, optimizer_model_softmax, epoch, device, laplace=True)
+        break
 
         ### RESHUFFLE FOR NEXT EPOCH ###
         train_loader = reshuffle_train(train_data)
 
     torch.save(model.state_dict(),'temp/tensor.pt')
 
-    #print("Fitting Laplace approximation...") # VERY SLOW
-    #la = Laplace(model_softmax, 'classification',
-    #     subset_of_weights='last_layer',
-    #     hessian_structure='diag')
-    #la.fit(train_loader)
-    #la.optimize_prior_precision(method='marglik')
+    print("Fitting Laplace approximation...") # VERY SLOW
+    la = MetricLaplace(model, 'classification')#,
+        #subset_of_weights='last_layer')#,
+        #hessian_structure='diag')
+    la.fit(train_loader)
+    la.optimize_prior_precision(method='marglik', n_steps=2)
 
     ### PLOTTING TRAINING EMBEDDINGS ###
     #train_embeddings, train_labels = get_all_embeddings(train_data, model)
