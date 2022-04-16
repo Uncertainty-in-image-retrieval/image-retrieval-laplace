@@ -1,10 +1,10 @@
 project:
   name: unc-img-laplace
-  experiment: kron
+  experiment: diag
 
 training:
   batch_size: 256
-  epochs: 5
+  epochs: 1
   lr: 0.001
   margin: 0.1
   distance: LpDistance
