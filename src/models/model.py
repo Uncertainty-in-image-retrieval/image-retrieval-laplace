@@ -76,6 +76,7 @@ class LinearNet(nn.Module):
             nn.Dropout2d(0.25),
             nn.Linear(32,2)
         )
+        
         """
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
