@@ -1,7 +1,6 @@
 import torch
 import pickle
-import torch.nn as nn
-import torch.distributions as dists
+from torch.optim import lr_scheduler
 import torch.optim as optim
 from torchvision import transforms
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
@@ -10,7 +9,7 @@ from pytorch_metric_learning import testers
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.utils.data import random_split
 
-from src.data.make_dataset import get_data
+from src.data.make_dataset import get_KMNIST_data, get_MNIST_data
 from src.models.model import VGG, Net, NetSoftmax, LinearNet
 from src.models.metric_laplace import MetricLaplace
 from src.utils.pytorch_metric_learning import setup_pytorch_metric_learning
@@ -28,7 +27,7 @@ from laplace import Laplace
 from netcal.metrics import ECE
 from netcal.presentation import ReliabilityDiagram
 
-def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device):
+def train(model, loss_func, mining_func, train_loader, optimizer, scheduler, epoch, device):
     
     for batch_idx, (data, labels) in enumerate(train_loader):
         data, labels = data.to(device), labels.to(device)
@@ -93,11 +92,15 @@ def set_global_args(args):
     PROJECT = config_dict['project']
 
 
-def preproc_data():
+def preproc_data(dataset_name='KMNIST'):
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 
-    train_data, test_data = get_data(data_dir="./data/",
+    if dataset_name == 'KMNIST':
+        train_data, test_data = get_KMNIST_data(data_dir="./data/",
+                                    transform=transform)
+    else:
+        train_data, test_data = get_MNIST_data(data_dir="./data/",
                                     transform=transform)
 
     lengths = [int(len(train_data)*0.9), int(len(train_data)*0.1)]
@@ -126,20 +129,21 @@ def run():
     #wandb.login(key=WANDB_KEY)
     #wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
 
-    train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data()
+    train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data('KMNIST')
 
     device = (torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
     
     model = LinearNet().to(device)
-    optimizer_model = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
+    optimizer = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
+    scheduler = lr_scheduler.StepLR(optimizer, 8, gamma=0.1, last_epoch=-1)
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
     print(train_loader)
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
 
-        train(model, loss_func, mining_func, train_loader, optimizer_model, epoch, device)
-        break
+        train(model, loss_func, mining_func, train_loader, optimizer, scheduler, epoch, device)
+        #break
 
         ### RESHUFFLE FOR NEXT EPOCH ###
         train_loader = reshuffle_train(train_data)
@@ -150,7 +154,7 @@ def run():
     hs = []
     for x, y in iter(val_loader):
         x = torch.reshape(x, (-1,784,))
-        loss, h = _curv_closure(model, mining_func, loss_func, calculator, x, y)
+        _, h = _curv_closure(model, mining_func, loss_func, calculator, x, y)
         hs.append(h)
     hs = torch.stack(hs, dim=0)
     h = torch.sum(hs, dim=0)
@@ -181,6 +185,8 @@ def run():
     with open("pred_in.pkl", "wb") as f:
         pickle.dump({"means": preds.mean(dim=0), "vars": preds.var(dim=0)}, f)
 
+
+    train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data('MNIST')
     preds_ood = []
     for net_sample in samples:
         vector_to_parameters(net_sample, model.parameters())

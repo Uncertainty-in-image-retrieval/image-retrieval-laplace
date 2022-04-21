@@ -4,9 +4,9 @@ project:
 
 training:
   batch_size: 256
-  epochs: 1
+  epochs: 2
   lr: 0.001
-  margin: 0.1
+  margin: 1
   distance: LpDistance
   loss: ContrastiveLoss
   reducer: AvgNonZero
