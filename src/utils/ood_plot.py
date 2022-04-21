@@ -5,9 +5,9 @@ import pickle
 import numpy as np
 import seaborn as sns
 
-with open("preds.pkl", "rb") as f:
+with open("pred_in.pkl", "rb") as f:
     preds = pickle.load(f)
-with open("preds_ood.pkl", "rb") as f:
+with open("pred_ood.pkl", "rb") as f:
     preds_ood = pickle.load(f)
 
 means_preds = preds["means"].detach().numpy()

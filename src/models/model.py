@@ -63,9 +63,7 @@ class LinearNet(nn.Module):
     def __init__(self):
         super(LinearNet, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(784, 9216),
-            nn.ReLU(),
-            nn.Linear(9216, 256),
+            nn.Linear(784, 256),
             nn.ReLU(),
             nn.Dropout2d(0.25),
             nn.Linear(256, 64),
@@ -74,9 +72,10 @@ class LinearNet(nn.Module):
             nn.Linear(64,32),
             nn.ReLU(),
             nn.Dropout2d(0.25),
-            nn.Linear(32,2)
+            nn.Linear(32,2),
+            nn.BatchNorm1d(2)
         )
-        
+
         """
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)

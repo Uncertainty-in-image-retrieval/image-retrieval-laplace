@@ -47,7 +47,7 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device)
 
         loss.backward()
         optimizer.step()
-        wandb.log({"loss": loss})
+        #wandb.log({"loss": loss})
         if batch_idx % 20 == 0:
             if TRAINING_HP['miner'] == 'TripletMarginMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
@@ -95,26 +95,24 @@ def set_global_args(args):
 
 def preproc_data():
     transform = transforms.Compose(
-        [transforms.ToTensor(),transforms.Normalize((0.1307,), (0.3081,))])
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 
-    train_data, test_data = get_data(data_dir="./data/", 
+    train_data, test_data = get_data(data_dir="./data/",
                                     transform=transform)
 
-
     lengths = [int(len(train_data)*0.9), int(len(train_data)*0.1)]
-    training_data, val_data = random_split(
-                train_data, lengths
-            )
-
+    training_data, val_data = random_split(train_data, lengths)
     
     train_loader = torch.utils.data.DataLoader(
         training_data, batch_size=TRAINING_HP['batch_size'], shuffle=True)
+
     val_loader = torch.utils.data.DataLoader(
         val_data, batch_size=TRAINING_HP['batch_size'], shuffle=True)
+
     test_loader = torch.utils.data.DataLoader(
         test_data, batch_size=TRAINING_HP['batch_size'])
 
-    return train_loader, test_loader,val_loader, training_data, val_data, test_data
+    return train_loader, test_loader, val_loader, training_data, val_data, test_data
 
 
 def reshuffle_train(training_data):
@@ -125,8 +123,8 @@ def reshuffle_train(training_data):
 
 def run():
 
-    wandb.login(key=WANDB_KEY)
-    wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
+    #wandb.login(key=WANDB_KEY)
+    #wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
 
     train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data()
 
@@ -137,7 +135,7 @@ def run():
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
-    print (train_loader)
+    print(train_loader)
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
 
         train(model, loss_func, mining_func, train_loader, optimizer_model, epoch, device)
@@ -168,11 +166,12 @@ def run():
 
     samples = sample(mu_q, sigma_q, n_samples=16)
 
+
     preds = []
     for net_sample in samples:
         vector_to_parameters(net_sample, model.parameters())
         batch_preds = []
-        for x, _ in val_loader:
+        for x, _ in test_loader:
             x = torch.reshape(x, (-1,784,))
             pred = model(x)
             batch_preds.append(pred)
