@@ -11,7 +11,7 @@ from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.utils.data import random_split
 
 from src.data.make_dataset import get_data
-from src.models.model import VGG, Net, NetSoftmax
+from src.models.model import VGG, Net, NetSoftmax, LinearNet
 from src.models.metric_laplace import MetricLaplace
 from src.utils.pytorch_metric_learning import setup_pytorch_metric_learning
 from src.utils.plots import plot_umap
@@ -32,7 +32,9 @@ def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device)
     
     for batch_idx, (data, labels) in enumerate(train_loader):
         data, labels = data.to(device), labels.to(device)
-        
+
+        data = torch.reshape(data, (-1,784,))
+
         model.train()
         optimizer.zero_grad()
         embeddings = model(data)
@@ -98,11 +100,13 @@ def preproc_data():
     train_data, test_data = get_data(data_dir="./data/", 
                                     transform=transform)
 
+
     lengths = [int(len(train_data)*0.9), int(len(train_data)*0.1)]
     training_data, val_data = random_split(
                 train_data, lengths
             )
 
+    
     train_loader = torch.utils.data.DataLoader(
         training_data, batch_size=TRAINING_HP['batch_size'], shuffle=True)
     val_loader = torch.utils.data.DataLoader(
@@ -128,7 +132,7 @@ def run():
 
     device = (torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu'))
     
-    model = Net().to(device)
+    model = LinearNet().to(device)
     optimizer_model = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
@@ -147,6 +151,7 @@ def run():
 
     hs = []
     for x, y in iter(val_loader):
+        x = torch.reshape(x, (-1,784,))
         loss, h = _curv_closure(model, mining_func, loss_func, calculator, x, y)
         hs.append(h)
     hs = torch.stack(hs, dim=0)
@@ -168,6 +173,7 @@ def run():
         vector_to_parameters(net_sample, model.parameters())
         batch_preds = []
         for x, _ in val_loader:
+            x = torch.reshape(x, (-1,784,))
             pred = model(x)
             batch_preds.append(pred)
         preds.append(torch.cat(batch_preds, dim=0))
@@ -181,6 +187,7 @@ def run():
         vector_to_parameters(net_sample, model.parameters())
         batch_preds = []
         for x, _ in val_loader:
+            x = torch.reshape(x, (-1,784,))
             x = x + torch.randn(x.shape)  # batch_size, n_channels, width, height
             pred = model(x)
             batch_preds.append(pred)
