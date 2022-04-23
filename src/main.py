@@ -10,7 +10,7 @@ from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from torch.utils.data import random_split
 
 from src.data.make_dataset import get_KMNIST_data, get_MNIST_data
-from src.models.model import VGG, Net, NetSoftmax, LinearNet
+from src.models.model import VGG, Net, NetSoftmax, LinearNet, ConvNet
 from src.models.metric_laplace import MetricLaplace
 from src.utils.pytorch_metric_learning import setup_pytorch_metric_learning
 from src.utils.plots import plot_umap
@@ -27,12 +27,12 @@ from laplace import Laplace
 from netcal.metrics import ECE
 from netcal.presentation import ReliabilityDiagram
 
-def train(model, loss_func, mining_func, train_loader, optimizer, scheduler, epoch, device):
+def train(model, loss_func, mining_func, train_loader, optimizer, epoch, device):
     
     for batch_idx, (data, labels) in enumerate(train_loader):
         data, labels = data.to(device), labels.to(device)
 
-        data = torch.reshape(data, (-1,784,))
+        #data = torch.reshape(data, (-1,784,))
 
         model.train()
         optimizer.zero_grad()
@@ -46,7 +46,7 @@ def train(model, loss_func, mining_func, train_loader, optimizer, scheduler, epo
 
         loss.backward()
         optimizer.step()
-        #wandb.log({"loss": loss})
+        wandb.log({"loss": loss})
         if batch_idx % 20 == 0:
             if TRAINING_HP['miner'] == 'TripletMarginMiner':
                 print(f"Epoch {epoch} Iteration {batch_idx}/{len(train_loader)}: Loss = {loss}, Number of mined triplets = {mining_func.num_triplets}")
@@ -56,6 +56,7 @@ def train(model, loss_func, mining_func, train_loader, optimizer, scheduler, epo
         
         
 def get_all_embeddings(dataset, model):
+
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
 
@@ -93,6 +94,7 @@ def set_global_args(args):
 
 
 def preproc_data(dataset_name='KMNIST'):
+
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
 
@@ -126,8 +128,8 @@ def reshuffle_train(training_data):
 
 def run():
 
-    #wandb.login(key=WANDB_KEY)
-    #wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
+    wandb.login(key=WANDB_KEY)
+    wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
 
     train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data('KMNIST')
 
@@ -135,25 +137,48 @@ def run():
     
     model = LinearNet().to(device)
     optimizer = optim.Adam(model.parameters(), lr=TRAINING_HP['lr'])
-    scheduler = lr_scheduler.StepLR(optimizer, 8, gamma=0.1, last_epoch=-1)
     
     loss_func, mining_func = setup_pytorch_metric_learning(TRAINING_HP)
 
-    print(train_loader)
     for epoch in range(1, TRAINING_HP['epochs'] + 1):
 
-        train(model, loss_func, mining_func, train_loader, optimizer, scheduler, epoch, device)
+        train(model, loss_func, mining_func, train_loader, optimizer, epoch, device)
         #break
 
         ### RESHUFFLE FOR NEXT EPOCH ###
-        train_loader = reshuffle_train(train_data)
+        #train_loader = reshuffle_train(train_data)
+
+    for batch_idx, (data, labels) in enumerate(test_loader):
+        data, labels = data.to(device), labels.to(device)
+
+        #data = torch.reshape(data, (-1,784,))
+
+        model.eval()
+        optimizer.zero_grad()
+        embeddings = model(data)
+
+        if mining_func:
+            indices_tuple = mining_func(embeddings, labels)
+            loss = loss_func(embeddings, labels, indices_tuple)
+        else:
+            loss = loss_func(embeddings, labels)
+
+        print(f"Iteration {batch_idx}/{len(test_loader)}: Loss = {loss}")
+    
+    train_embeddings, train_labels = get_all_embeddings(train_data, model)
+    test_embeddings, test_labels = get_all_embeddings(test_data, model)
+    knn_score = knn(train_embeddings, train_labels, test_embeddings, test_labels)
+    print(f"KNN Score: {knn_score}")
+    wandb.log({"knn": knn_score})
+    
+    #plot_umap("FUCKTHISSHIT", train_embeddings, train_labels)
 
     #torch.save(model.state_dict(),'temp/tensor.pt')
     calculator = ContrastiveHessianCalculator()
 
     hs = []
     for x, y in iter(val_loader):
-        x = torch.reshape(x, (-1,784,))
+        #x = torch.reshape(x, (-1,784,))
         _, h = _curv_closure(model, mining_func, loss_func, calculator, x, y)
         hs.append(h)
     hs = torch.stack(hs, dim=0)
@@ -176,14 +201,14 @@ def run():
         vector_to_parameters(net_sample, model.parameters())
         batch_preds = []
         for x, _ in test_loader:
-            x = torch.reshape(x, (-1,784,))
+            #x = torch.reshape(x, (-1,784,))
             pred = model(x)
             batch_preds.append(pred)
         preds.append(torch.cat(batch_preds, dim=0))
     preds = torch.stack(preds)
 
     with open("pred_in.pkl", "wb") as f:
-        pickle.dump({"means": preds.mean(dim=0), "vars": preds.var(dim=0)}, f)
+        pickle.dump(preds, f)
 
 
     train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data('MNIST')
@@ -192,15 +217,14 @@ def run():
         vector_to_parameters(net_sample, model.parameters())
         batch_preds = []
         for x, _ in val_loader:
-            x = torch.reshape(x, (-1,784,))
-            x = x + torch.randn(x.shape)  # batch_size, n_channels, width, height
+            #x = torch.reshape(x, (-1,784,))
             pred = model(x)
             batch_preds.append(pred)
         preds_ood.append(torch.cat(batch_preds, dim=0))
     preds_ood = torch.stack(preds_ood)
 
     with open("pred_ood.pkl", "wb") as f:
-        pickle.dump({"means": preds_ood.mean(dim=0), "vars": preds_ood.var(dim=0)}, f)
+        pickle.dump(preds_ood, f)
 
     #print("Fitting Laplace approximation...") # VERY SLOW
     #la = MetricLaplace(model, 'classification')#,

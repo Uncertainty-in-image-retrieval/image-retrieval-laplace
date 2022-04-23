@@ -10,8 +10,11 @@ with open("pred_in.pkl", "rb") as f:
 with open("pred_ood.pkl", "rb") as f:
     preds_ood = pickle.load(f)
 
-means_preds = preds["means"].detach().numpy()
-vars_preds = preds["vars"].detach().numpy()
+preds = preds.detach().numpy()
+
+print(preds)
+print(len(preds))
+exit()
 
 means_preds_ood = preds_ood["means"].detach().numpy()
 vars_preds_ood = preds_ood["vars"].detach().numpy()
