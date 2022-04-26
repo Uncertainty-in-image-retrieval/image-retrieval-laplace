@@ -40,11 +40,13 @@ class ContrastiveHessianCalculator:
     def calculate_hessian(self, *inputs, model, num_outputs, hessian_structure="diag", agg="sum"):
         x1 = inputs[0]
         x2 = inputs[1]
+        print("Computinng the jacobians...")
         Jz1, f1 = self.jacobians(x1, model, output_size=num_outputs)
         Jz2, f2 = self.jacobians(x2, model, output_size=num_outputs)
 
         y = inputs[2]
 
+        print("Actual Hessian computation...")
         # L = y * ||z_1 - z_2||^2 + (1 - y) max(0, m - ||z_1 - z_2||^2)
         # The Hessian is equal to Hs, except when we have:
         # 1. A negative pair
@@ -78,6 +80,8 @@ class ContrastiveHessianCalculator:
 
         if agg == "sum":
             Hs = Hs.sum(dim=0)
+        elif agg == 'mean':
+            Hs = Hs.mean(dim=0)
 
         return Hs
 

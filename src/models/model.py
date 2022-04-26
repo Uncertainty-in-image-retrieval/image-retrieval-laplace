@@ -15,15 +15,19 @@ class Net(nn.Module):
             nn.Dropout2d(0.25),
             nn.Flatten(1),
             nn.Linear(9216, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout2d(0.25),
             nn.Linear(256, 64),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Dropout2d(0.25),
             nn.Linear(64,32),
+            nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Dropout2d(0.25),
-            nn.Linear(32,2)
+            nn.Linear(32,2),
+            nn.BatchNorm1d(2)
         )
         """
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
@@ -67,6 +71,7 @@ class ConvNet(nn.Module):
         self.dropout1 = nn.Dropout2d(0.25)
         self.dropout2 = nn.Dropout2d(0.5)
         self.fc1 = nn.Linear(9216, 128)
+        self.fc2 = nn.Linear(128, 2)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -77,6 +82,7 @@ class ConvNet(nn.Module):
         x = self.dropout1(x)
         x = torch.flatten(x, 1)
         x = self.fc1(x)
+        x = self.fc2(x)
         return x
 
 class LinearNet(nn.Module):
@@ -84,11 +90,11 @@ class LinearNet(nn.Module):
         super(LinearNet, self).__init__()
         self.model = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(784, 512),
+            nn.Linear(784, 64),
             nn.ReLU(),
-            nn.Linear(512, 256),
+            nn.Linear(64, 8),
             nn.ReLU(),
-            nn.Linear(256, 128)
+            nn.Linear(8, 16)
         )
 
         """

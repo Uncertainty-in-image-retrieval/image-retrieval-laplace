@@ -60,7 +60,7 @@ def get_all_embeddings(dataset, model):
     tester = testers.BaseTester()
     return tester.get_all_embeddings(dataset, model)
 
-def _curv_closure(model, miner, loss_fn, calculator, X, y):
+def _curv_closure(model, miner, loss_fn, calculator, X, y, batch_idx):
     embeddings = model(X)
 
     a1, p, a2, n = miner(embeddings, y)
@@ -70,6 +70,7 @@ def _curv_closure(model, miner, loss_fn, calculator, X, y):
     x2 = X[torch.cat((p, n))]
     t = torch.cat((torch.ones(p.shape[0]), torch.zeros(n.shape[0])))
 
+    print(f"Hessian {batch_idx}")
     H = calculator.calculate_hessian(x1, x2, t, model=model, num_outputs=embeddings.shape[-1])
 
     return loss, H
@@ -173,13 +174,17 @@ def run():
     
     #plot_umap("FUCKTHISSHIT", train_embeddings, train_labels)
 
-    #torch.save(model.state_dict(),'temp/tensor.pt')
+    print("Saving model weights...")
+    torch.save(model.state_dict(),'temp/model.pt')
+    
+    print("Computing Hessian...")
     calculator = ContrastiveHessianCalculator()
 
     hs = []
-    for x, y in iter(val_loader):
+    print(f"Val Loader length: {len(val_loader)}")
+    for batch_idx, (x, y) in enumerate(val_loader):
         #x = torch.reshape(x, (-1,784,))
-        _, h = _curv_closure(model, mining_func, loss_func, calculator, x, y)
+        _, h = _curv_closure(model, mining_func, loss_func, calculator, x, y, batch_idx)
         hs.append(h)
     hs = torch.stack(hs, dim=0)
     h = torch.sum(hs, dim=0)
@@ -195,7 +200,7 @@ def run():
 
     samples = sample(mu_q, sigma_q, n_samples=16)
 
-
+    print("In sample inference...")
     preds = []
     for net_sample in samples:
         vector_to_parameters(net_sample, model.parameters())
@@ -211,6 +216,7 @@ def run():
         pickle.dump(preds, f)
 
 
+    print("Out of sample inference...")
     train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data('MNIST')
     preds_ood = []
     for net_sample in samples:
