@@ -198,7 +198,7 @@ def run():
         samples = samples * posterior_scale.reshape(1, n_params)
         return parameters.reshape(1, n_params) + samples
 
-    samples = sample(mu_q, sigma_q, n_samples=16)
+    samples = sample(mu_q, sigma_q, n_samples=100)
 
     print("In sample inference...")
     preds = []
@@ -222,7 +222,7 @@ def run():
     for net_sample in samples:
         vector_to_parameters(net_sample, model.parameters())
         batch_preds = []
-        for x, _ in val_loader:
+        for x, _ in test_loader:
             #x = torch.reshape(x, (-1,784,))
             pred = model(x)
             batch_preds.append(pred)
