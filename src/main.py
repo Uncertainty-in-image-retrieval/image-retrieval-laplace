@@ -130,7 +130,7 @@ def reshuffle_train(training_data):
 def run():
 
     wandb.login(key=WANDB_KEY)
-    wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], config=TRAINING_HP)
+    wandb.init(project=PROJECT['name'], name=PROJECT['experiment'], entity="unc-laplace", config=TRAINING_HP)
 
     train_loader, test_loader, val_loader, train_data, val_data, test_data = preproc_data('KMNIST')
 
