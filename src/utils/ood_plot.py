@@ -17,23 +17,37 @@ preds_flatten = np.reshape(preds, (16*10000, 16))
 preds_ood = preds_ood.detach().numpy()
 preds_ood_flatten = np.reshape(preds_ood, (16*6000, 16))
 
-#preds_mean = np.mean(preds, axis=0)
-#preds_var = np.var(preds, axis=0)
-
-reducer = umap.UMAP(random_state=42)
+"""
+reducer = umap.UMAP(random_state=42, metric="precomputed")
+preds_reduced = preds_flatten[:20000,:]
+from sklearn.metrics.pairwise import euclidean_distances
+print("computing shit")
+dist_matrix = euclidean_distances(preds_reduced, preds_reduced)
+print(dist_matrix)
+print(dist_matrix.shape)
+print("fitting cock")
 import time 
 start = time.time()
-embeddings_flatten = reducer.fit_transform(preds_flatten[:80000,:])
+embeddings_flatten = reducer.fit(dist_matrix)
 print("Time: ", str(time.time()-start))
 embeddings = np.reshape(embeddings_flatten, (8, 10000, 2))
+exit()
+"""
+
+reducer = umap.UMAP(random_state=42)
+print("Fitting")
+import time 
+start = time.time()
+reducer.fit(preds_flatten[:40000,:])
+print("Time: ", str(time.time()-start))
+embeddings_flatten = reducer.transform(preds_flatten[:160000,:])
+embeddings = np.reshape(embeddings_flatten, (16, 10000, 2))
 
 preds_in_mean = np.mean(embeddings, axis=0)
 preds_in_var = np.var(embeddings, axis=0)
 
-
-
-embeddings_ood_flatten = reducer.transform(preds_ood_flatten[:48000,:])
-embeddings_ood = np.reshape(embeddings_ood_flatten, (8, 6000, 2))
+embeddings_ood_flatten = reducer.transform(preds_ood_flatten[:96000,:])
+embeddings_ood = np.reshape(embeddings_ood_flatten, (16, 6000, 2))
 
 preds_ood_mean = np.mean(embeddings_ood, axis=0)
 preds_ood_var = np.var(embeddings_ood, axis=0)
