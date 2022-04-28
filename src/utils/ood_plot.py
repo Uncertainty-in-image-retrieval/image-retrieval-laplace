@@ -12,10 +12,11 @@ with open("pred_ood.pkl", "rb") as f:
     preds_ood = pickle.load(f)
 
 preds = preds.detach().numpy()
-preds_flatten = np.reshape(preds, (100*10000, 16)).tolil()
+preds_flatten = np.reshape(preds, (100*10000, 16))[:16*10000,:]
 
 preds_ood = preds_ood.detach().numpy()
-preds_ood_flatten = np.reshape(preds_ood, (100*10000, 16)).tolil()
+preds_ood_flatten = np.reshape(preds_ood, (100*10000, 16))[:16*10000,:]
+
 
 """
 reducer = umap.UMAP(random_state=42, metric="precomputed")
@@ -37,16 +38,16 @@ reducer = umap.UMAP(random_state=42)
 print("Fitting")
 import time 
 start = time.time()
-reducer.fit(preds_flatten[:20000,:])
+reducer.fit(preds_flatten[:10000,:])
 print("Time: ", str(time.time()-start))
-embeddings_flatten = reducer.transform(preds_flatten[:1000000,:])
-embeddings = np.reshape(embeddings_flatten, (100, 10000, 2))
+embeddings_flatten = reducer.transform(preds_flatten[:,:])
+embeddings = np.reshape(embeddings_flatten, (16, 10000, 2))
 
 preds_in_mean = np.mean(embeddings, axis=0)
 preds_in_var = np.var(embeddings, axis=0)
 
-embeddings_ood_flatten = reducer.transform(preds_ood_flatten[:1000000,:])
-embeddings_ood = np.reshape(embeddings_ood_flatten, (100, 10000, 2))
+embeddings_ood_flatten = reducer.transform(preds_ood_flatten[:,:])
+embeddings_ood = np.reshape(embeddings_ood_flatten, (16, 10000, 2))
 
 preds_ood_mean = np.mean(embeddings_ood, axis=0)
 preds_ood_var = np.var(embeddings_ood, axis=0)
