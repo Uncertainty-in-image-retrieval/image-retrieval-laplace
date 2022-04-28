@@ -122,7 +122,7 @@ def run():
 
     train_embeddings, train_labels = get_all_embeddings(training_data, model)
     test_embeddings, test_labels = get_all_embeddings(test_data, model)
-    knn_score = knn(train_embeddings, train_labels, test_embeddings, test_labels)
+    knn(train_embeddings, train_labels, test_embeddings, test_labels)
     
 
 
