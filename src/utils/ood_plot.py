@@ -12,10 +12,10 @@ with open("pred_ood.pkl", "rb") as f:
     preds_ood = pickle.load(f)
 
 preds = preds.detach().numpy()
-preds_flatten = np.reshape(preds, (16*10000, 16))
+preds_flatten = np.reshape(preds, (100*10000, 16)).tolil()
 
 preds_ood = preds_ood.detach().numpy()
-preds_ood_flatten = np.reshape(preds_ood, (16*6000, 16))
+preds_ood_flatten = np.reshape(preds_ood, (100*10000, 16)).tolil()
 
 """
 reducer = umap.UMAP(random_state=42, metric="precomputed")
@@ -25,7 +25,6 @@ print("computing shit")
 dist_matrix = euclidean_distances(preds_reduced, preds_reduced)
 print(dist_matrix)
 print(dist_matrix.shape)
-print("fitting cock")
 import time 
 start = time.time()
 embeddings_flatten = reducer.fit(dist_matrix)
@@ -38,16 +37,16 @@ reducer = umap.UMAP(random_state=42)
 print("Fitting")
 import time 
 start = time.time()
-reducer.fit(preds_flatten[:40000,:])
+reducer.fit(preds_flatten[:20000,:])
 print("Time: ", str(time.time()-start))
-embeddings_flatten = reducer.transform(preds_flatten[:160000,:])
-embeddings = np.reshape(embeddings_flatten, (16, 10000, 2))
+embeddings_flatten = reducer.transform(preds_flatten[:1000000,:])
+embeddings = np.reshape(embeddings_flatten, (100, 10000, 2))
 
 preds_in_mean = np.mean(embeddings, axis=0)
 preds_in_var = np.var(embeddings, axis=0)
 
-embeddings_ood_flatten = reducer.transform(preds_ood_flatten[:96000,:])
-embeddings_ood = np.reshape(embeddings_ood_flatten, (16, 6000, 2))
+embeddings_ood_flatten = reducer.transform(preds_ood_flatten[:1000000,:])
+embeddings_ood = np.reshape(embeddings_ood_flatten, (100, 10000, 2))
 
 preds_ood_mean = np.mean(embeddings_ood, axis=0)
 preds_ood_var = np.var(embeddings_ood, axis=0)
@@ -65,7 +64,7 @@ axs[0].scatter(preds_ood_mean[:limit,0],preds_ood_mean[:limit,1], s=0.5, c="r", 
 #axs[0].scatter(embeddings[:,0],embeddings[:,1], s=0.5, c="b", label="i.d.")
 #axs[0].scatter(embedding_ood[:,0],embedding_ood[:,1], s=0.5, c="r", label="o.o.d")
 
-
+"""
 for i in range(limit):
     elp = Ellipse((preds_in_mean[i,0],preds_in_mean[i,1]), preds_in_var[i,0], preds_in_var[i,1], fc='None', edgecolor='b', lw=0.5)
     axs[0].add_patch(elp)
@@ -81,6 +80,7 @@ sns.kdeplot(id_density, ax=axs[1], color="b")
 
 ood_density = preds_ood_var.flatten()
 sns.kdeplot(ood_density, ax=axs[1], color="r")
+"""
+plt.savefig("visualizations/in_out_sample_distrib_without_var.png")
 
-plt.savefig("visualizations/in_out_sample_distrib.png")
 plt.show()
