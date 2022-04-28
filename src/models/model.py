@@ -94,8 +94,7 @@ class LinearNet(nn.Module):
             nn.ReLU(),
             nn.Linear(64, 8),
             nn.ReLU(),
-            nn.Linear(8, 16),
-            nn.BatchNorm1d(16)
+            nn.Linear(8, 16)
         )
 
         """
