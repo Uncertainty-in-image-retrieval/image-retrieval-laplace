@@ -184,7 +184,7 @@ def run():
     print(f"Val Loader length: {len(val_loader)}")
     for batch_idx, (x, y) in enumerate(val_loader):
         #x = torch.reshape(x, (-1,784,))
-        _, h = _curv_closure(model, mining_func, loss_func, calculator, x, y, batch_idx)
+        _, h = _curv_closure(model, mining_func, loss_func, calculator, x, y, batch_idx, 'mean')
         hs.append(h)
     hs = torch.stack(hs, dim=0)
     h = torch.sum(hs, dim=0)
