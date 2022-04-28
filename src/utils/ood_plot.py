@@ -14,6 +14,8 @@ with open("pred_ood.pkl", "rb") as f:
 preds = preds.detach().numpy()
 preds_flatten = np.reshape(preds, (100*10000, 16))[:16*10000,:]
 
+print(preds_flatten)
+
 preds_ood = preds_ood.detach().numpy()
 preds_ood_flatten = np.reshape(preds_ood, (100*10000, 16))[:16*10000,:]
 
@@ -45,6 +47,14 @@ embeddings = np.reshape(embeddings_flatten, (16, 10000, 2))
 
 preds_in_mean = np.mean(embeddings, axis=0)
 preds_in_var = np.var(embeddings, axis=0)
+
+print(embeddings)
+print(embeddings[:,0,0])
+print(np.mean(embeddings[:,0,0]))
+print(np.var(embeddings[:,0,0]))
+print(preds_in_mean)
+print(preds_in_var)
+exit()
 
 embeddings_ood_flatten = reducer.transform(preds_ood_flatten)
 embeddings_ood = np.reshape(embeddings_ood_flatten, (16, 10000, 2))
