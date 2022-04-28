@@ -65,7 +65,7 @@ axs[0].scatter(preds_ood_mean[:limit,0],preds_ood_mean[:limit,1], s=0.5, c="r", 
 #axs[0].scatter(embeddings[:,0],embeddings[:,1], s=0.5, c="b", label="i.d.")
 #axs[0].scatter(embedding_ood[:,0],embedding_ood[:,1], s=0.5, c="r", label="o.o.d")
 
-"""
+
 for i in range(limit):
     elp = Ellipse((preds_in_mean[i,0],preds_in_mean[i,1]), preds_in_var[i,0], preds_in_var[i,1], fc='None', edgecolor='b', lw=0.5)
     axs[0].add_patch(elp)
@@ -81,7 +81,7 @@ sns.kdeplot(id_density, ax=axs[1], color="b")
 
 ood_density = preds_ood_var.flatten()
 sns.kdeplot(ood_density, ax=axs[1], color="r")
-"""
+
 plt.savefig("visualizations/in_out_sample_distrib_without_var.png")
 
 plt.show()
