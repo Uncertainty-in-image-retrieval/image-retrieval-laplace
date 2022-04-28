@@ -71,7 +71,7 @@ def _curv_closure(model, miner, loss_fn, calculator, X, y, batch_idx):
     t = torch.cat((torch.ones(p.shape[0]), torch.zeros(n.shape[0])))
 
     print(f"Hessian {batch_idx}")
-    H = calculator.calculate_hessian(x1, x2, t, model=model, num_outputs=embeddings.shape[-1], agg='mean')
+    H = calculator.calculate_hessian(x1, x2, t, model=model, num_outputs=embeddings.shape[-1], agg='sum')
 
     return loss, H
 
