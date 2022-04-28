@@ -7,6 +7,7 @@ from torchvision import transforms
 from pytorch_metric_learning import testers
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
 
 from src.data.make_dataset import get_data
 from src.models.model import Net
@@ -49,7 +50,9 @@ def get_all_embeddings(dataset, model):
 def knn(train_embeddings, train_labels, test_embeddings, test_labels):
     knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(train_embeddings, train_labels)
-    testing_acc = knn.score(test_embeddings, test_labels)
+    testing_acc = knn.score(test_embeddings, np.ravel(test_labels))
+    print(f"KNN Score: {testing_acc}")
+    wandb.log({"knn": testing_acc})
 
 
 ### compute accuracy using AccuracyCalculator from pytorch-metric-learning ###
@@ -120,8 +123,7 @@ def run():
     train_embeddings, train_labels = get_all_embeddings(training_data, model)
     test_embeddings, test_labels = get_all_embeddings(test_data, model)
     knn_score = knn(train_embeddings, train_labels, test_embeddings, test_labels)
-    print(f"KNN Score: {knn_score}")
-    wandb.log({"knn": knn_score})
+    
 
 
 if __name__ == "__main__":

@@ -8,8 +8,8 @@ training:
   lr: 0.001
   margin: 0.8
   distance: LpDistance
-  loss: ContrastiveLoss
+  loss: Triplet
   reducer: AvgNonZero
-  miner: BatchEasyHardMiner
+  miner: TripletMarginMiner
 
 wandb: 358da8cfb93c05b5d6d342a84fc027188f27e79a
